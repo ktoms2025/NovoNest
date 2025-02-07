@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personalized Feeding Quiz</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .question {
+            display: none;
+            margin-bottom: 20px;
+        }
+        .question.active {
+            display: block;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h2>Welcome to Your Personalized Feeding Support Quiz</h2>
+    <p>Answer a few questions to get customized recommendations!</p>
+    
+    <form id="quizForm">
+        <div class="question active" id="q1">
+            <p><strong>1. What best describes your feeding journey? (Select all that apply)</strong></p>
+            <input type="checkbox" name="journey" value="new_parent"> New or Expecting Parent <br>
+            <input type="checkbox" name="journey" value="bottle_feeding"> Bottle-Feeding Parent <br>
+            <input type="checkbox" name="journey" value="lgbtq"> LGBTQ+ Parent <br>
+            <input type="checkbox" name="journey" value="adoptive"> Adoptive Parent <br>
+            <input type="checkbox" name="journey" value="weaning"> Introducing Solids & Weaning <br>
+            <input type="checkbox" name="journey" value="special_needs"> Baby with Special Feeding Needs <br>
+            <button type="button" class="btn" onclick="nextQuestion(1)">Next</button>
+        </div>
+        
+        <div class="question" id="q2">
+            <p><strong>2. Are you currently breastfeeding or planning to breastfeed?</strong></p>
+            <input type="radio" name="breastfeeding" value="yes_support"> Yes, and I want lactation support <br>
+            <input type="radio" name="breastfeeding" value="yes_nutrition"> Yes, and I want diet & nutrition advice <br>
+            <input type="radio" name="breastfeeding" value="no_bottle"> No, I am using bottle-feeding <br>
+            <input type="radio" name="breastfeeding" value="no_donor"> No, but I am interested in donor milk <br>
+            <button type="button" class="btn" onclick="nextQuestion(2)">Next</button>
+        </div>
+        
+        <div class="question" id="q3">
+            <p><strong>3. Do you have any special dietary or cultural preferences?</strong></p>
+            <input type="checkbox" name="diet" value="halal_kosher"> Halal or Kosher Formula <br>
+            <input type="checkbox" name="diet" value="vegetarian"> Vegetarian or Plant-Based Diet <br>
+            <input type="checkbox" name="diet" value="traditional"> Traditional Feeding Practices <br>
+            <input type="checkbox" name="diet" value="no_pref"> No Specific Preferences <br>
+            <button type="button" class="btn" onclick="nextQuestion(3)">Next</button>
+        </div>
+        
+        <div class="question" id="q4">
+            <p><strong>4. Does your baby have any special feeding needs?</strong></p>
+            <input type="radio" name="special_needs" value="preemie"> Preemie/NICU Feeding Support <br>
+            <input type="radio" name="special_needs" value="reflux"> Reflux & Digestive Concerns <br>
+            <input type="radio" name="special_needs" value="allergy"> Allergy-Friendly Feeding <br>
+            <input type="radio" name="special_needs" value="oral_motor"> Oral or Motor Feeding Challenges <br>
+            <input type="radio" name="special_needs" value="no_special"> No Special Needs <br>
+            <button type="button" class="btn" onclick="showResults()">View My Recommendations</button>
+        </div>
+    </form>
+    
+    <div id="results" class="question">
+        <h3>Your Personalized Recommendations:</h3>
+        <p id="resultText"></p>
+    </div>
+    
+    <script>
+        let currentQuestion = 1;
+
+        function nextQuestion(questionNumber) {
+            document.getElementById(`q${questionNumber}`).classList.remove("active");
+            document.getElementById(`q${questionNumber + 1}`).classList.add("active");
+            currentQuestion++;
+        }
+
+        function showResults() {
+            document.getElementById(`q${currentQuestion}`).classList.remove("active");
+            document.getElementById("results").classList.add("active");
+            
+            let recommendations = "Based on your responses, we recommend the following resources and products:";
+            if (document.querySelector('input[name="breastfeeding"]:checked')) {
+                recommendations += "\n- Lactation support consultations and AI-powered feeding trackers.";
+            }
+            if (document.querySelector('input[name="special_needs"]:checked')) {
+                recommendations += "\n- Special feeding resources tailored to NICU, reflux, or allergy needs.";
+            }
+            if (document.querySelector('input[name="diet"]:checked')) {
+                recommendations += "\n- Culturally appropriate formula and feeding products.";
+            }
+            document.getElementById("resultText").innerText = recommendations;
+        }
+    </script>
+</body>
+</html>
