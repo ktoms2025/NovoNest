@@ -1,0 +1,192 @@
+{
+  "_note": "Fictional data for prototype use only. All names, scores, and transcript content are fabricated. None of this represents a real candidate or real eSkill assessment output.",
+  "role": {
+    "title": "Call Center Agent — General/BPO",
+    "req_id": "CC-1042",
+    "blueprint_dimensions_required": [
+      "Skills", "Behavioral", "Personality", "Cognitive", "Trainability"
+    ]
+  },
+  "candidates": [
+    {
+      "candidate_id": "C-1001",
+      "name": "Jordan Ellis",
+      "applied_date": "2026-08-12",
+      "hard_skills": {
+        "phone_email_etiquette": 88,
+        "data_entry_accuracy": 74,
+        "multitasking_typing": 81,
+        "troubleshooting_logic": 69
+      },
+      "personality": {
+        "big_five": {
+          "conscientiousness": 83,
+          "emotional_stability": 70,
+          "agreeableness": 77,
+          "extraversion": 64,
+          "openness": 58
+        },
+        "integrity": 85,
+        "impression_management": 52,
+        "riasec_top_codes": ["Conventional", "Social", "Enterprising"]
+      },
+      "ai_sample": {
+        "status": "complete",
+        "scenarios": [
+          {
+            "name": "Angry customer escalation call",
+            "score": 82,
+            "rubric_notes": "Strong de-escalation language, maintained tone under pressure"
+          },
+          {
+            "name": "Multitasking order lookup",
+            "score": 75,
+            "rubric_notes": "Accurate but slower than target pace under time pressure"
+          }
+        ]
+      },
+      "blueprint_coverage": {
+        "Skills": "assessed",
+        "Behavioral": "assessed",
+        "Personality": "assessed",
+        "Cognitive": "not_assessed",
+        "Trainability": "partial"
+      }
+    },
+    {
+      "candidate_id": "C-1002",
+      "name": "Taylor Brooks",
+      "applied_date": "2026-08-13",
+      "hard_skills": {
+        "phone_email_etiquette": 70,
+        "data_entry_accuracy": 65,
+        "multitasking_typing": 68,
+        "troubleshooting_logic": 60
+      },
+      "personality": {
+        "big_five": {
+          "conscientiousness": 66,
+          "emotional_stability": 71,
+          "agreeableness": 74,
+          "extraversion": 72,
+          "openness": 63
+        },
+        "integrity": 79,
+        "impression_management": 61,
+        "riasec_top_codes": ["Social", "Enterprising", "Conventional"]
+      },
+      "ai_sample": {
+        "status": "complete",
+        "scenarios": [
+          {
+            "name": "Angry customer escalation call",
+            "score": 63,
+            "rubric_notes": "Polite but generic responses, limited de-escalation technique"
+          },
+          {
+            "name": "Multitasking order lookup",
+            "score": 58,
+            "rubric_notes": "Accuracy dropped noticeably under simulated time pressure"
+          }
+        ]
+      },
+      "blueprint_coverage": {
+        "Skills": "assessed",
+        "Behavioral": "assessed",
+        "Personality": "assessed",
+        "Cognitive": "not_assessed",
+        "Trainability": "not_assessed"
+      }
+    },
+    {
+      "candidate_id": "C-1003",
+      "name": "Morgan Reyes",
+      "applied_date": "2026-08-14",
+      "hard_skills": {
+        "phone_email_etiquette": 93,
+        "data_entry_accuracy": 89,
+        "multitasking_typing": 90,
+        "troubleshooting_logic": 84
+      },
+      "personality": {
+        "big_five": {
+          "conscientiousness": 88,
+          "emotional_stability": 85,
+          "agreeableness": 80,
+          "extraversion": 69,
+          "openness": 61
+        },
+        "integrity": 90,
+        "impression_management": 55,
+        "riasec_top_codes": ["Conventional", "Investigative", "Social"]
+      },
+      "ai_sample": {
+        "status": "complete",
+        "scenarios": [
+          {
+            "name": "Angry customer escalation call",
+            "score": 89,
+            "rubric_notes": "Consistently calm, used structured de-escalation steps"
+          },
+          {
+            "name": "Multitasking order lookup",
+            "score": 87,
+            "rubric_notes": "Fast and accurate, handled interruption well"
+          }
+        ]
+      },
+      "blueprint_coverage": {
+        "Skills": "assessed",
+        "Behavioral": "assessed",
+        "Personality": "assessed",
+        "Cognitive": "assessed",
+        "Trainability": "partial"
+      }
+    },
+    {
+      "candidate_id": "C-1004",
+      "name": "Casey Nguyen",
+      "applied_date": "2026-08-15",
+      "hard_skills": {
+        "phone_email_etiquette": 58,
+        "data_entry_accuracy": 51,
+        "multitasking_typing": 55,
+        "troubleshooting_logic": 48
+      },
+      "personality": {
+        "big_five": {
+          "conscientiousness": 54,
+          "emotional_stability": 49,
+          "agreeableness": 60,
+          "extraversion": 57,
+          "openness": 66
+        },
+        "integrity": 62,
+        "impression_management": 70,
+        "riasec_top_codes": ["Artistic", "Enterprising", "Social"]
+      },
+      "ai_sample": {
+        "status": "complete",
+        "scenarios": [
+          {
+            "name": "Angry customer escalation call",
+            "score": 47,
+            "rubric_notes": "Became visibly flustered, escalated rather than de-escalated"
+          },
+          {
+            "name": "Multitasking order lookup",
+            "score": 55,
+            "rubric_notes": "Frequent errors under time pressure"
+          }
+        ]
+      },
+      "blueprint_coverage": {
+        "Skills": "assessed",
+        "Behavioral": "assessed",
+        "Personality": "assessed",
+        "Cognitive": "not_assessed",
+        "Trainability": "not_assessed"
+      }
+    }
+  ]
+}
