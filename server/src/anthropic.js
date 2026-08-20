@@ -21,7 +21,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import { QuestionSetSchema, GradingResultSchema } from "./schemas.js";
 
 const client = new Anthropic();
-const MODEL = process.env.ANTHROPIC_MODEL || "claude-opus-5";
+const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-5";
 
 const QUESTION_GEN_SYSTEM_PROMPT = `You are the question-design component of an AI pre-screen interview tool used in a hiring pipeline. Given one candidate's completed assessment data and the role's blueprint coverage requirements, you generate a short, structured set of pre-screen interview questions for that candidate.
 

@@ -101,7 +101,7 @@ requester before building:
 
 A few smaller implementation defaults, not called out in the spec:
 
-- **Model:** defaults to `claude-opus-5` for both calls, overridable via
+- **Model:** defaults to `claude-sonnet-5` for both calls, overridable via
   `ANTHROPIC_MODEL` in `server/.env`.
 - **Structured output mechanism:** forced tool use (`tool_choice`) with a
   JSON Schema generated from each Zod schema, rather than the newer
