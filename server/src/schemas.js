@@ -16,21 +16,40 @@ export const DIMENSIONS = [
 export const QuestionSchema = z.object({
   id: z.string().describe("Short stable id, e.g. 'q1'"),
   dimension: z.enum(DIMENSIONS),
-  prompt: z.string().describe("The interview question to ask the candidate"),
-  rationale: z
+  candidate_facing_question: z
     .string()
     .describe(
-      "Plain-language explanation of why this question was generated, tied back to the specific input score/flag that triggered it",
+      "The natural, conversational question exactly as the candidate will see it. Must contain no numbers, scores, or internal field/system names of any kind — see system prompt rules.",
+    ),
+  internal_rationale: z
+    .string()
+    .describe(
+      "Plain-language explanation of why this question was generated, tied back to the specific input score/flag that triggered it. Recruiter-report only — the candidate never sees this.",
     ),
   source_signal: z
     .string()
     .describe(
-      "The specific field/value from the candidate's assessment data that triggered this question, e.g. 'troubleshooting_logic: 69' or 'blueprint_coverage.Cognitive: not_assessed'",
+      "The specific field/value from the candidate's assessment data that triggered this question, e.g. 'troubleshooting_logic: 69' or 'blueprint_coverage.Cognitive: not_assessed'. Recruiter-report only.",
     ),
 });
 
 export const QuestionSetSchema = z.object({
   questions: z.array(QuestionSchema).min(3).max(5),
+});
+
+// --- Step 2: interview turn delivery ------------------------------------
+// One call per chat turn during the live interview. The caller (code, not
+// the model) decides which fixed question comes next or that it's time to
+// wrap up — this call's only job is phrasing that turn naturally, so its
+// output is intentionally just the one candidate-facing string.
+
+export const InterviewTurnSchema = z.object({
+  candidate_facing_message: z
+    .string()
+    .min(1)
+    .describe(
+      "This turn's full message to the candidate: a brief natural acknowledgment of what they just said, then the required next content (a question or the closing message). No numbers, no internal field/system names, no scoring language.",
+    ),
 });
 
 // --- Step 3: grading ----------------------------------------------------

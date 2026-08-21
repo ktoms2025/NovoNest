@@ -1,10 +1,17 @@
-// Two distinct, structured-output Anthropic API calls (per the spec's
-// explicit instruction: question generation and grading are separate calls,
-// not one combined freeform call). Both force a single tool call whose
-// input_schema is generated from the Zod schemas in schemas.js, then
-// validate the returned tool input with that same Zod schema — so the
-// response is always either valid structured data or a thrown error, never
-// freeform text.
+// Three structured-output Anthropic API calls:
+//   1. generateQuestions — Step 1, once per interview
+//   2. deliverInterviewTurn — Step 2, once per chat turn during the live
+//      interview (added in spec v2 so the AI Recruiter can acknowledge the
+//      candidate's last answer naturally, instead of a scripted "Question
+//      X of Y"). Code decides which fixed question comes next or that it's
+//      time to wrap up; this call only phrases that turn.
+//   3. gradeInterview — Step 3, once per completed interview
+// Question generation and grading are kept as two separate calls per the
+// spec's explicit instruction, not one combined freeform call. All three
+// force a single tool call whose input_schema is generated from the Zod
+// schemas in schemas.js, then validate the returned tool input with that
+// same schema — so the response is always either valid structured data or
+// a thrown error, never freeform text.
 //
 // Note: this SDK version (@anthropic-ai/sdk 0.68.0, the current npm
 // release at build time) does not yet expose `client.messages.parse()` /
@@ -15,25 +22,51 @@
 // IMPORTANT: no candidate values are ever interpolated into prompt strings.
 // The candidate/role objects are passed as serialized JSON data blocks, so
 // swapping server/data/mock-candidates.json (or MOCK_DATA_PATH) for a
-// different dataset requires no changes here.
+// different dataset requires no changes here. The turn-delivery call
+// (Step 2) additionally never receives the candidate's assessment data at
+// all — it only needs the transcript and the fixed next-content directive,
+// so there's nothing sensitive in its prompt to leak in the first place.
 import Anthropic from "@anthropic-ai/sdk";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { QuestionSetSchema, GradingResultSchema } from "./schemas.js";
+import { QuestionSetSchema, InterviewTurnSchema, GradingResultSchema } from "./schemas.js";
+import { findLeaks, LeakGuardError } from "./leakGuard.js";
 
 const client = new Anthropic();
 const MODEL = process.env.ANTHROPIC_MODEL || "claude-sonnet-5";
 
 const QUESTION_GEN_SYSTEM_PROMPT = `You are the question-design component of an AI pre-screen interview tool used in a hiring pipeline. Given one candidate's completed assessment data and the role's blueprint coverage requirements, you generate a short, structured set of pre-screen interview questions for that candidate.
 
+Every question has two strictly separate parts:
+- candidate_facing_question: what the candidate actually sees and is asked, in a chat conversation.
+- internal_rationale: for the recruiter's report only, never shown to the candidate.
+
 Rules:
 - Generate between 3 and 5 questions total.
 - Every question must target a specific score, gap, or flag found in the candidate's assessment data (a notably low or high hard-skill score, a personality trait extreme, an AI Sample scenario result, or a blueprint dimension marked "not_assessed" or "partial"). Do not include generic small talk, icebreakers, or questions with no basis in the data.
-- Every question must have a plain-language rationale that explicitly names the specific field and value that triggered it, so a recruiter reading the report later can see exactly why the question exists.
+- candidate_facing_question must read like something a warm, curious human recruiter would naturally ask out loud. It must NEVER contain: any number of any kind (scores, percentages, counts, dates); any internal field, dataset, or system name, in any form (e.g. "troubleshooting_logic," "data_entry_accuracy," "blueprint coverage," "AI Sample," "Big Five," "RIASEC," "integrity score"); or any language that signals to the candidate that they are being scored, tested, or evaluated ("assessment," "rubric," "score," "evaluate," "test"). It should sound like it's simply about their experience and approach to the job — the data behind it should be invisible to them. For example, if troubleshooting_logic scored low, don't ask about "troubleshooting logic" — ask something like "Walk me through how you'd handle a customer whose issue you can't immediately solve." If a blueprint dimension is unassessed, don't mention "blueprint" or "assessed" at all — just ask a question that would naturally surface that dimension.
+- internal_rationale must have a plain-language explanation that explicitly names the specific field and value that triggered it, so a recruiter reading the report later can see exactly why the question exists. This is the one place that data belongs.
 - Prioritize, in order: (1) blueprint dimensions marked "not_assessed" or "partial" for this role, (2) notably low or notably high hard-skill or AI Sample scores, (3) personality or integrity signals worth probing further.
 - Where the data supports it, cover a mix of the five blueprint dimensions rather than clustering all questions on one dimension.
-- Keep each question concise (1-3 sentences) and answerable in a short chat response.
+- Keep each candidate_facing_question concise (1-2 sentences) and answerable in a short chat response.
 - Do not invent facts about the candidate beyond what is in the provided data.
 - Call the submit_questions tool exactly once with your final output. Do not include any other commentary.`;
+
+const INTERVIEW_TURN_SYSTEM_PROMPT = `You are a warm, experienced recruiter conducting a live pre-screen chat interview with a job candidate. This is a real conversation, not a form.
+
+Each time you're called, you'll be given the conversation so far and told exactly what needs to happen in this turn — either a specific topic to ask about next, or an instruction to wrap up the interview. That content is fixed; your job is only to deliver it the way a thoughtful human recruiter would in the flow of a live chat.
+
+Rules:
+- Start by briefly and specifically reacting to what the candidate just said in their previous message — the way a person actually listening would (e.g. referencing something specific they mentioned), not a generic "Great, thanks!" Keep this to a short phrase or sentence.
+- Then smoothly transition into the required next content (the next question, or the wrap-up). The transition should feel like a natural conversational segue, not an abrupt topic change.
+- Ask about ONLY the topic you were given. Never skip it, never substitute a different question, never add extra questions of your own.
+- NEVER include any number of any kind — no scores, percentages, counts, or statistics.
+- NEVER reference internal field, system, or dataset names, or anything that reads like a database identifier (words joined with underscores, e.g. "troubleshooting_logic"). Speak the way a person talks, not the way a spreadsheet is labeled.
+- NEVER use "Question X of Y," numbered lists, or any other labeling that makes this feel like a form or test.
+- NEVER say or imply, directly or indirectly, that the candidate's answers are being scored, graded, evaluated, or assessed. Don't use words like "score," "assessment," "rubric," "evaluate," or "test." This should feel like a normal conversation with a person, start to finish.
+- Keep your tone warm, relaxed, and low-pressure throughout, like a friendly recruiter easing into a chat — never clinical or interrogative.
+- Keep the message brief: a short acknowledgment plus the next question or closing thought. A sentence or two of reaction, then the content — not a speech.
+- When wrapping up: thank the candidate warmly, let them know a recruiter will be in touch with next steps, and do not ask anything further.
+- Call the submit_turn tool exactly once with your final message. Do not include any other commentary.`;
 
 const GRADING_SYSTEM_PROMPT = `You are the grading component of an AI pre-screen interview tool used in a hiring pipeline. Given a candidate's existing assessment data, the interview questions that were generated for them (with rationale), and the full chat transcript of their answers, you produce structured, explainable scores and a final recommendation.
 
@@ -84,6 +117,47 @@ async function callStructured({ system, userContent, toolName, toolDescription, 
 }
 
 /**
+ * Wraps callStructured with the code-level leak guard (leakGuard.js): after
+ * a successful, schema-valid call, every candidate-facing string in the
+ * result is checked for digits or internal field names. On a hit, retries
+ * once with a corrective reminder appended to the prompt. If the second
+ * attempt also leaks, throws LeakGuardError rather than ever returning
+ * unsafe text to a caller — callers decide what "fail safely" means for
+ * their situation (see generateQuestions and deliverInterviewTurn below).
+ */
+async function callStructuredWithLeakGuard({
+  system,
+  userContent,
+  toolName,
+  toolDescription,
+  zodSchema,
+  candidate,
+  extractCandidateFacingStrings,
+}) {
+  const attemptLog = [];
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const content =
+      attempt === 1
+        ? userContent
+        : `${userContent}\n\nIMPORTANT: your previous attempt included a number, score, or internal field name in candidate-facing text, which is never allowed. Re-read the rules above carefully and try again — remove every digit and every internal field/system name from any candidate-facing text.`;
+
+    const result = await callStructured({ system, userContent: content, toolName, toolDescription, zodSchema });
+    const leaks = extractCandidateFacingStrings(result).flatMap((text) =>
+      findLeaks(text, candidate).map((leak) => ({ ...leak, text })),
+    );
+
+    if (leaks.length === 0) return result;
+    attemptLog.push({ attempt, leaks });
+  }
+
+  throw new LeakGuardError(
+    `Candidate-facing text failed the internal leak guard on both attempts for "${toolName}".`,
+    { leaks: attemptLog, toolName },
+  );
+}
+
+/**
  * Step 1 — question generation.
  * @param {object} candidate candidate object from the mock dataset
  * @param {object} role role object from the mock dataset
@@ -95,13 +169,90 @@ export async function generateQuestions(candidate, role) {
     "Generate the interview question set for this candidate now.",
   ].join("\n\n");
 
-  return callStructured({
-    system: QUESTION_GEN_SYSTEM_PROMPT,
-    userContent,
-    toolName: "submit_questions",
-    toolDescription: "Submit the generated set of 3-5 structured pre-screen interview questions.",
-    zodSchema: QuestionSetSchema,
-  });
+  try {
+    return await callStructuredWithLeakGuard({
+      system: QUESTION_GEN_SYSTEM_PROMPT,
+      userContent,
+      toolName: "submit_questions",
+      toolDescription: "Submit the generated set of 3-5 structured pre-screen interview questions.",
+      zodSchema: QuestionSetSchema,
+      candidate,
+      extractCandidateFacingStrings: (result) => result.questions.map((q) => q.candidate_facing_question),
+    });
+  } catch (err) {
+    if (err instanceof LeakGuardError) {
+      // This happens before the candidate has seen anything (question
+      // generation runs when a recruiter clicks "Start Pre-Screen", ahead
+      // of the chat UI), so there's no live conversation to protect — a
+      // clear, retryable failure here is fine. What must never happen is
+      // leaking the actual offending text/field names into the HTTP
+      // response, so the detailed leak info goes to the server log only.
+      console.error(
+        `[leak-guard] question generation failed twice for candidate ${candidate.candidate_id}:`,
+        JSON.stringify(err.leaks, null, 2),
+      );
+      throw new Error(
+        "Could not generate a safe, candidate-appropriate question set for this candidate after two attempts. Please try again.",
+      );
+    }
+    throw err;
+  }
+}
+
+/**
+ * Step 2 — one interview turn's candidate-facing message. Code (see
+ * interviewFlow.js) decides `directive`: which fixed question comes next,
+ * or that it's time to wrap up. This call never receives the candidate's
+ * assessment data — it only needs the transcript and the directive, so
+ * there's no assessment data in its prompt to leak in the first place.
+ *
+ * Throws LeakGuardError if both attempts leak — interviewFlow.js is
+ * responsible for catching that and substituting the pre-written safe
+ * fallback so a live candidate is never shown a raw error or broken text.
+ *
+ * @param {object} role role object from the mock dataset
+ * @param {Array} transcript transcript so far, [{ speaker, message }, ...]
+ * @param {{ type: 'ask_question', question: object } | { type: 'wrap_up' }} directive
+ * @param {object} candidate only used locally for the leak guard's field-name denylist, never sent to the model
+ */
+export async function deliverInterviewTurn({ role, transcript, directive, candidate }) {
+  const directiveText =
+    directive.type === "ask_question"
+      ? `Next required content: ask about this topic next (you may phrase it naturally, but you must cover this and only this topic): "${directive.question.candidate_facing_question}"`
+      : "Next required content: wrap up. This was the last topic — deliver a short, warm closing message thanking the candidate and letting them know a recruiter will follow up with next steps. Do not ask anything further.";
+
+  const userContent = [
+    toDataBlock("Role", { title: role.title }),
+    toDataBlock(
+      "Conversation so far",
+      transcript.map(({ speaker, message }) => ({ speaker, message })),
+    ),
+    directiveText,
+  ].join("\n\n");
+
+  try {
+    const result = await callStructuredWithLeakGuard({
+      system: INTERVIEW_TURN_SYSTEM_PROMPT,
+      userContent,
+      toolName: "submit_turn",
+      toolDescription: "Submit this turn's candidate-facing message.",
+      zodSchema: InterviewTurnSchema,
+      candidate,
+      extractCandidateFacingStrings: (result) => [result.candidate_facing_message],
+    });
+    return result.candidate_facing_message;
+  } catch (err) {
+    if (err instanceof LeakGuardError) {
+      // Loud in the log, never loud (or broken) in the candidate's chat —
+      // interviewFlow.js catches this and substitutes a pre-written safe
+      // message so the conversation continues cleanly.
+      console.error(
+        `[leak-guard] interview turn delivery failed twice for candidate ${candidate.candidate_id} — falling back to a pre-written safe message. Review this candidate's interview.`,
+        JSON.stringify({ directive, leaks: err.leaks }, null, 2),
+      );
+    }
+    throw err;
+  }
 }
 
 /**

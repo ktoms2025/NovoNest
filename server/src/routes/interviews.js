@@ -42,15 +42,19 @@ interviewsRouter.get("/:sessionId", (req, res) => {
 });
 
 // Step 2: one chat turn — record the candidate's message and advance the
-// scripted delivery state machine (practice turn, then each question).
-interviewsRouter.post("/:sessionId/respond", (req, res) => {
+// delivery state machine (warm-up turn, then each question, then wrap-up).
+// Each turn after the first is one Claude call (see interviewFlow.js); a
+// failure there is caught internally and falls back to safe pre-written
+// text rather than ever reaching this handler, so the only errors caught
+// here are genuine request problems (bad session id, empty message, etc.).
+interviewsRouter.post("/:sessionId/respond", async (req, res) => {
   try {
     const session = getSession(req.params.sessionId);
     if (!session) return res.status(404).json({ error: "Session not found" });
     const { message } = req.body || {};
     if (!message || !message.trim()) return res.status(400).json({ error: "message is required" });
 
-    const { session: updated, recruiterMessage, done } = advance(session, message.trim());
+    const { session: updated, recruiterMessage, done } = await advance(session, message.trim());
     saveSession(updated);
 
     res.json({

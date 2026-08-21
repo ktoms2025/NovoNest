@@ -143,9 +143,9 @@ export default function ReportPage() {
                 <td>
                   <span className="badge badge-neutral">{q.dimension}</span>
                 </td>
-                <td>{q.prompt}</td>
+                <td>{q.candidate_facing_question}</td>
                 <td className="muted">
-                  {q.rationale}
+                  {q.internal_rationale}
                   <br />
                   <em>Source: {q.source_signal}</em>
                 </td>
@@ -176,7 +176,7 @@ export default function ReportPage() {
                   </td>
                   <td>
                     <p>
-                      <strong>Q:</strong> {question?.prompt}
+                      <strong>Q:</strong> {question?.candidate_facing_question}
                     </p>
                     <p className="muted">
                       <strong>A:</strong> {findCandidateAnswer(transcript, d.question_id)}
